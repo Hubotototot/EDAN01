@@ -16,6 +16,7 @@ public class PizzaMain {
 		System.out.println("\n\t*** Execution time = " + T + " ms");
 	}
 
+	@SuppressWarnings({ "deprecation", "deprecation" })
 	private static void execute(int n, int[] price, int m, int[] buy, int[] free) {
 		Store store = new Store();
 		bubbleSort(price);
@@ -76,13 +77,14 @@ public class PizzaMain {
 		//store.impose(new SumInt());
 		for (int i = 0; i < n; i++) {
 			for(int j = 0; j < m+1; j+=2){				
-					pajas[i][j] = matrix[i][j];
+				pajas[i][j] = matrix[i][j];
 			}
 			
 		}
 		IntVar[] pajas2 = new IntVar[n];
 		for(int i = 0; i<n;i++){
-				pajas2[i] = new Sum(pajas[i], new IntVar(store,0,1)).sum;
+			pajas2[i] = new IntVar(store, 0,1);
+			store.impose(new Sum(pajas[i], pajas2[i]));
 		}
 		
 		
