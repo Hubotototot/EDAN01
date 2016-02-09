@@ -3,24 +3,25 @@ import org.jacop.core.IntVar;
 import org.jacop.core.Store;
 import org.jacop.search.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 
-public class Pizza2 {
+public class PizzaMaster {
     public static void main(String[] args) {
         long T1, T2, T;
 
         T1 = System.currentTimeMillis();
-        example(2);
+        example(3);
         T2 = System.currentTimeMillis();
         T = T2 - T1;
         System.out.println("\n\t*** Execution time = " + T + " ms");
     }
 
-    private static void letsDeal(int n, int[] price, int m, int[] buy, int[] free) {
+    private static void solve(int n, int[] price, int m, int[] buy, int[] free) {
         Store store = new Store();
         IntVar[] paidPizzas = new IntVar[n];
         IntVar[] freePizzas = new IntVar[n];
-        IntVar[][] voucherBought = new IntVar[n][m];
-        IntVar[][] voucherFree = new IntVar[n][m];
+        IntVar[][] voucherBought = new IntVar[m][n];
+        IntVar[][] voucherFree = new IntVar[m][n];
 
 
         //Populera paidPizzaz och freePizzas
@@ -28,7 +29,7 @@ public class Pizza2 {
         //en pizza kan inte både köpas och fås.
         for(int i = 0; i < n; i++){
             paidPizzas[i] = new IntVar(store, "Paid pizza"+(i+1), 0,1);
-            freePizzas[i] = new IntVar(store, "Free pizza"+i+1, 0,1);
+            freePizzas[i] = new IntVar(store, "Free pizza"+(i+1), 0,1);
             store.impose(new XneqY(paidPizzas[i], freePizzas[i]));
         }
 
@@ -40,41 +41,29 @@ public class Pizza2 {
         //Populera voucherBought och voucherFree
         //Samt att en pizza kan inte fås av en voucher om den
         //användes för att aktivera vouchern.
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < m; j++) {
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
                 voucherBought[i][j] = new IntVar(store, "Paid pizza" + ((i+1) * 10 + j), 0, 1);
                 voucherFree[i][j] = new IntVar(store, "Free pizza" + ((i+1)*10+j), 0, 1);
-                store.impose(new XneqY(voucherBought[i][j], voucherFree[i][j]));
+                store.impose(new Not(new XplusYeqC(voucherBought[i][j], voucherFree[i][j], 2)));
             }
         }
 
         //En pizza får inte användas för att "aktivera" två olika vouchers.
-        int index = 0;
-        for(IntVar[] iv : getColumns(voucherBought)){
-            store.impose(new SumInt(store, iv, "<=", new IntVar(store, 1, 1)));
-            store.impose(new SumInt(store, iv, "==", paidPizzas[index]));
-            index++;
-        }
-
-        //En pizza ska inte tas ut gratis två gånger.
-        for(IntVar[] iv : getColumns(voucherFree)){
-            store.impose(new SumInt(store, iv, "<=", new IntVar(store, 1, 1)));
-        }
-        IntVar one = new IntVar(store, 1, 1);
-        for(int i = 0; i<m;i++){
-        	PrimitiveConstraint c1 = new SumInt(store, voucherBought[i],"==" ,one);
-            PrimitiveConstraint c2 = new SumInt(store, voucherFree[i],"==" ,one);
-            PrimitiveConstraint c3 = new And(c1,c2);
-            PrimitiveConstraint c4 = new XeqC(paidPizzas[i], 1);
-            PrimitiveConstraint c5 = new XeqC(paidPizzas[i], 0);
-            store.impose(new IfThenElse(c3, c4, c5));
-        		
+        for(int i = 0; i<n; i++){
+            store.impose(new SumInt(store, getColumn(voucherBought, i), "<=", new IntVar(store, 1, 1)));
+            store.impose(new SumInt(store, getColumn(voucherFree, i), "<=", new IntVar(store, 1, 1)));
+            store.impose(new SumInt(store, getColumn(voucherBought, i), "==", paidPizzas[i]));
+            store.impose(new SumInt(store, getColumn(voucherFree, i), "==", freePizzas[i]));
         }
 
         //Antalet gratizpizzor får inte överstiga antalet som vouchern erbjuder.
         for(int i = 0; i < m; i++){
            store.impose(new SumInt(store, voucherFree[i], "<=", new IntVar(store, free[i], free[i])));
         }
+
+        //Totala antalet gratispizzor får inte överstiga summan av de gratispizzor som kan fås av vouchers.
+//        store.impose(new SumInt(store, freePizzas, "<=", new IntVar(store, sum(free), sum(free))));
 
         //Du får inte ta fler gratispizzor än vouchern tillåter samt
         //du får inte ta gratispizzor om du inte betalar för tillräckligt många pizzor.
@@ -86,8 +75,8 @@ public class Pizza2 {
         }
 
         //Pizza som tas gratis får inte vara dyrare än den billigaste som köpts.
-        for(int i = 0; i < n; i++){
-            for(int j = 0; j<m; j++){
+        for(int i = 0; i < m; i++){
+            for(int j = 0; j<n; j++){
                 for(int k = j-1; k >= 0; k--){
                     PrimitiveConstraint c1 = new XeqC(voucherBought[i][j], 1);
                     PrimitiveConstraint c2 = new XeqC(voucherFree[i][k], 1);
@@ -104,7 +93,7 @@ public class Pizza2 {
 
 
         Search<IntVar> search = new DepthFirstSearch<IntVar>();
-        SelectChoicePoint<IntVar> select = new SimpleSelect<IntVar>(paidPizzas, null, new IndomainMin<IntVar>());
+        SelectChoicePoint<IntVar> select = new SimpleMatrixSelect<IntVar>(mergeMatrices(voucherBought, voucherFree), null, new IndomainMin<IntVar>());
 
 //        search.setSolutionListener(new PrintOutListener<IntVar>());
 //        search.getSolutionListener().searchAll(true);
@@ -112,11 +101,12 @@ public class Pizza2 {
         boolean result = search.labeling(store, select, cost);
 
         if (result) {
-            System.out.println("Solution : " + java.util.Arrays.asList(paidPizzas));
+            System.out.print("Solution with ");
+            System.out.print(store.numberConstraints() + " constraints.\n");
             System.out.println("Paid pizzas vector:");
             printVector(paidPizzas);
-            System.out.println("Free pizzas vector:");
-            printVector(freePizzas);
+            System.out.println("Prices:");
+            printIntVector(price);
             System.out.println("Voucher bought matrix:");
             printMatrix(voucherBought);
             System.out.println("Voucher free matrix:");
@@ -127,17 +117,32 @@ public class Pizza2 {
 
     }
 
-    private static ArrayList<IntVar[]> getColumns(IntVar[][] matrix) {
-        ArrayList<IntVar[]> cols = new ArrayList<>();
-        IntVar[] col = new IntVar[matrix[0].length];
-
+    private static IntVar[] getColumn(IntVar[][] matrix, int i) {
+        IntVar[] col = new IntVar[matrix.length];
         for (int j = 0; j < matrix.length; j++) {
-            for (int i = 0; i < matrix[0].length; i++) {
-                col[i] = matrix[j][i];
-            }
-            cols.add(col);
+            col[j] = matrix[j][i];
         }
-        return cols;
+        return col;
+    }
+
+    private static IntVar[][] mergeMatrices(IntVar[][] A, IntVar[][] B){
+        int rows = A.length+B.length;
+        int columns = A[0].length;
+        int indexRow=0;
+        IntVar[][] matrix = new IntVar[rows][columns];
+        for(int i = 0; i < A.length; i++){
+            for(int e = 0; e < A[0].length; e++){
+                matrix[indexRow][e] = A[i][e];
+            }
+            indexRow++;
+        }
+        for(int i = 0; i < B.length; i++){
+            for(int e = 0; e < B[0].length; e++){
+                matrix[indexRow][e] = B[i][e];
+            }
+            indexRow++;
+        }
+        return matrix;
     }
 
     private static IntVar[] mergeVectors(IntVar[] v1, IntVar[] v2){
@@ -189,23 +194,23 @@ public class Pizza2 {
                 int m = 2;
                 int[] buy = {1, 2};
                 int[] free = {1, 1};
-                letsDeal(n, price, m, buy, free);
+                solve(n, price, m, buy, free);
                 break;
             case 2:
                 int n2 = 4;
                 int[] price2 = {10, 15, 20, 15};
-                int m2 = 2;
+                int m2 = 7;
                 int[] buy2 = {1, 2, 2, 8, 3, 1, 4};
                 int[] free2 = {1, 1, 2 ,9, 1, 0, 1};
-                letsDeal(n2, price2, m2, buy2, free2);
+                solve(n2, price2, m2, buy2, free2);
                 break;
             case 3:
                 int n3 = 10;
                 int[] price3 = {70, 10, 60, 60, 30, 100, 60, 40, 60, 20};
                 int m3 = 4;
-                int[] buy3 = {1, 2, 1, 1};
-                int[] free3 = {1, 1, 1, 0};
-                letsDeal(n3, price3, m3, buy3, free3);
+                int[] buy3 =    {1, 2, 1, 1};
+                int[] free3 =   {1, 1, 1, 0};
+                solve(n3, price3, m3, buy3, free3);
                 break;
         }
     }
@@ -222,6 +227,13 @@ public class Pizza2 {
     private  static void printVector(IntVar[] vector){
         for(int i = 0; i < vector.length; i ++){
             System.out.print(vector[i].value()+" ");
+        }
+        System.out.print("\n");
+    }
+
+    private  static void printIntVector(int[] vector){
+        for(int i = 0; i < vector.length; i ++){
+            System.out.print(vector[i]+" ");
         }
         System.out.print("\n");
     }
