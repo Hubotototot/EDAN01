@@ -1,5 +1,9 @@
 package lab4;
 
+//https://github.com/Contemptio/EDAN01/blob/master/Laborations/3-AutoRegressionFilter/autoRegressionFilter.mzn
+//https://github.com/RobertBorg/EDAN01/blob/master/src/minizink/AutoRegressionFilter.mzn
+//https://github.com/eliasbrange/edan01/blob/master/arf.mzn elias brange hax
+
 public class OperationScheduling {
 
 	public static void main(String[] args) {
@@ -19,7 +23,7 @@ public class OperationScheduling {
 	}
 	
 	
-	public static void example(int ex ){	
+	public static void example(int ex){	
 		int n = 0; //adders
 		int m = 0; //multipliers
 		int[] mulOp = {0,1,2,3,4,5,6,7,14,15,16,17,20,21,22,23};

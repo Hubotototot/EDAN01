@@ -1,0 +1,6 @@
+output [show(end),show(mults),show(adds)];
+int: end;
+set of int: totAdds = 1..12;
+set of int: totMults = 1..16;
+array [totAdds] of int: adds;
+array [totMults] of int: mults;
