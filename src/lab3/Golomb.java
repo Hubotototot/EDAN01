@@ -1,3 +1,4 @@
+package lab3;
 /**
  *  Golomb.java 
  *  This file is part of JaCoP.

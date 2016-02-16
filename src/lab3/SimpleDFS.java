@@ -1,3 +1,4 @@
+package lab3;
 
 /**
  *  SimpleDFS.java 
@@ -33,7 +34,6 @@
 import org.jacop.constraints.Not;
 import org.jacop.constraints.PrimitiveConstraint;
 import org.jacop.constraints.XeqC;
-import org.jacop.constraints.XgteqC;
 import org.jacop.core.FailException;
 import org.jacop.core.IntDomain;
 import org.jacop.core.IntVar;
@@ -46,7 +46,7 @@ import org.jacop.core.Store;
  * @version 4.1
  */
 
-public class SimpleSplit2 {
+public class SimpleDFS {
 
 	boolean trace = false;
 
@@ -80,7 +80,7 @@ public class SimpleSplit2 {
 	 */
 	public IntVar costVariable = null;
 
-	public SimpleSplit2(Store s) {
+	public SimpleDFS(Store s) {
 		store = s;
 	}
 
@@ -224,22 +224,33 @@ public class SimpleSplit2 {
 		 * example variable selection; input order
 		 */
 		IntVar selectVariable(IntVar[] v) {
+			for (IntVar vv : v) {
+				if (vv == null) {
+					System.out.println("Hej");
+				}
+			}
 			if (v.length != 0) {
 
-				if(v[0].min() == v[0].max()){
-					searchVariables = new IntVar[v.length - 1];
-					for (int i = 0; i < v.length - 1; i++) {
-						searchVariables[i] = v[i + 1];
-					}
-
-				} else{
-					searchVariables = new IntVar[v.length];
-					for (int i = 0; i < v.length; i++) {
-						searchVariables[i] = v[i];
+				
+				int random = (int)(Math.random()*v.length);
+				System.out.println(random);
+				searchVariables = new IntVar[v.length - 1];
+				int j = 0;
+				for (int i = 0; i < searchVariables.length; i++) {
+					if(i == random)
+						j++;
+					
+					searchVariables[i] = v[i+j];
+					
+					
+				}
+				for (IntVar vv : searchVariables) {
+					if (vv == null) {
+						System.out.println("Hejhej");
 					}
 				}
 				
-				return v[0];
+				return v[random];
 
 			} else {
 				System.err.println("Zero length list of variables for labeling");
@@ -251,21 +262,15 @@ public class SimpleSplit2 {
 		 * example value selection; indomain_min
 		 */
 		int selectValue(IntVar v) {
-			int value = (v.min()+v.max());
-			if(value % 2 == 0){
-				return value/2;
-				
-			} else {
-	
-				return value/2+1;
-			}
+
+			return v.min();
 		}
 
 		/**
 		 * example constraint assigning a selected value
 		 */
 		public PrimitiveConstraint getConstraint() {
-			return new XgteqC(var, value);
+			return new XeqC(var, value);
 		}
 	}
 }
