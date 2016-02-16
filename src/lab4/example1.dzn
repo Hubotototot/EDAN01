@@ -1,0 +1,8 @@
+nbrMultipliers = 1;
+nbrAdders = 1;
+
+multiplierClock = 2;
+adderClock = 1;
+
+totalMultiplications = 1..16;
+totalAdditions = 1..12;
