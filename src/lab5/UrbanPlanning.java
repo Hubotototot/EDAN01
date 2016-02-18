@@ -28,14 +28,15 @@ public class UrbanPlanning {
 	public static void main(String[] args) {
         long T1, T2, T;
         T1 = System.currentTimeMillis();
-        example(2);
+        example(3);
         T2 = System.currentTimeMillis();
         T = T2 - T1;
-        System.out.println("\n\t*** Execution time = " + T + " ms");
+        System.out.println("Execution time = " + T + " ms");
     }
 	
 	private static void solve(int n, int n_commercial, int n_residential, int[] point_distribution){
 		
+		//Skapa matris fylld med ettor och nollor
 		IntVar[][] urban = new IntVar[n][n];
 		Store store = new Store();
 		for(int i = 0; i < n; i++){
@@ -43,24 +44,28 @@ public class UrbanPlanning {
 				urban[i][j] = new IntVar(store, 0, 1);
 			}			
 		}
-		IntVar[] urban_flat = new IntVar[n*n];
+		
+		//Skapa flattened arraylist för att kunna skapa flattened vektor
 		ArrayList<IntVar> urban_temp = new ArrayList<IntVar>();
 		for(int i = 0; i<n; i++){
 			for(int j = 0; j<n;j++){
 				urban_temp.add(urban[i][j]);
 			}
 		}
+		
+		//Skapa flattened vektor
+		IntVar[] urban_flat = new IntVar[n*n];
 		for(int i = 0; i<n*n; i++){
 			urban_flat[i] = urban_temp.get(i);
-		}
+		}	
 		
-		//Residential är ettor och commercial är nollor
+		//Residential är ettor och commercial är nollor. Summan av vektorn måste vara lika
+		//med antal residential från input
 		IntVar residential = new IntVar(store, n_residential, n_residential);
 		store.impose(new Sum(urban_flat, residential));
 		
 		//Skapa en matris som är 2*n * n stor. De n första raderna är raderna i urban och 
-		//de resterande n raderna är kolumnerna i urban.
-		
+		//de resterande n raderna är kolumnerna i urban.		
 		IntVar[][] rowAndCols = new IntVar[2*n][n];
 		
 		//Hämta ut raderna ur urban och stoppa in i nya matrisen
@@ -71,6 +76,7 @@ public class UrbanPlanning {
 				rowAndCols[i][j] = tempRow[j];
 			}
 		}
+		
 		//Hämta ut kolumnerna i urban och stoppa in i nya matrisen
 		IntVar[] tempCol;
 		for(int i = n; i<2*n;i++){
@@ -84,13 +90,14 @@ public class UrbanPlanning {
 		for(int i = 1; i<n;i++){
 			store.impose(new LexOrder(rowAndCols[i-1],rowAndCols[i],false));
 		}
+		
 		//Symmetry breaking constraints för kolumner
 		for(int i = n+1; i<2*n;i++){
 			store.impose(new LexOrder(rowAndCols[i-1],rowAndCols[i],false));
 		}
-		// Variables corresponding to the score of each row and column.
-        // Indexes 0-4 corresponds to the rows and indexes 5-9 corresponds
-        // to the columns.
+		
+		//Sätter vilka värden summan av rader och kolumner kan ha. rad 0 till n-1 är raderna och
+		// n till 2*n är kolumner.
         IntVar rowcolsums[] = new IntVar[2*n];
         for (int i = 0; i < 2*n; i++) {
             rowcolsums[i] = new IntVar(store, "sum" + i);
@@ -99,9 +106,7 @@ public class UrbanPlanning {
             	rowcolsums[i].addDom(j,j);
             }
         }
-
-        //int score[] = {-5, -4, -3, 3, 4, 5};
-
+        
         for (int i = 0; i < 2*n; i++) {
             IntVar sum = new IntVar(store, "sum"+i, 0, n);
             Constraint ctr = new Sum(rowAndCols[i], sum);
@@ -109,24 +114,26 @@ public class UrbanPlanning {
             store.impose(new Element(sum, point_distribution, rowcolsums[i], -1));
         }
 
-        // Used to find max score. Minimizing negMaxScore will maximize maxScore
-        IntVar maxScore = new IntVar(store, "maxScore", -100, 100);
-        IntVar negMaxScore = new IntVar(store, "negMaxScore", -100, 100);
+        //Deklarerar max och negativMax. Detta för att kunna använda minimize i search
+        //och få ut max av det.
+        IntVar max = new IntVar(store, "max", -100, 100);
+        IntVar negativeMax = new IntVar(store, "negativeMax", -100, 100);
         IntVar zero = new IntVar(store, "zero", 0, 0);
 
-        store.impose(new Sum(rowcolsums, maxScore));
-        store.impose(new XplusYeqZ(maxScore, negMaxScore, zero));
+        store.impose(new Sum(rowcolsums, max));
+        //Sätter max till absolutbeloppet av min, vilket betyder att vi kan använda 
+        //minimize i search och få ut max
+        store.impose(new XplusYeqZ(max, negativeMax, zero));
 
         Search<IntVar> label = new DepthFirstSearch<IntVar>();
         SelectChoicePoint<IntVar> select = new SimpleSelect<IntVar>(urban_flat,
                                                 new SmallestDomain<IntVar>(),
                                                 new IndomainMin<IntVar>());
 
-
-        boolean Result = label.labeling(store, select, negMaxScore);
+        boolean Result = label.labeling(store, select, negativeMax);
 
         if (Result) {
-            System.out.println("\n*** Yes");
+            System.out.println("\n*** Yes, solution found! ***");
             System.out.println("Solution:");
             for (int i = 0; i < n; i++) {
                 for (int j = 0; j < n; j++) {
@@ -138,16 +145,11 @@ public class UrbanPlanning {
                 }
                 System.out.println();
             }
-
-            System.out.println("The score for this solution is: " + maxScore.value());
+            System.out.println("Output cost: " + max.value());
         } else {
-            System.out.println("\n*** No");
-        }
-		
-		
-		
+            System.out.println("\n*** No, solution not found ***");
+        }	
 	}
-	
 	public static void example(int ex){	
 		int n = 0; //adders
 		int n_commercial = 0;
@@ -177,7 +179,6 @@ public class UrbanPlanning {
                 break;
         }
     }
-	
     private static IntVar[] getColumn(IntVar[][] matrix, int i) {
         IntVar[] col = new IntVar[matrix.length];
         for (int j = 0; j < matrix.length; j++) {
