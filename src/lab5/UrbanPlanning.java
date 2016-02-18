@@ -6,6 +6,8 @@ import java.util.ArrayList;
 
 import org.jacop.constraints.Constraint;
 import org.jacop.constraints.Sum;
+import org.jacop.constraints.XltY;
+import org.jacop.constraints.XlteqY;
 import org.jacop.constraints.XplusYeqZ;
 import org.jacop.core.IntVar;
 import org.jacop.core.Store;
@@ -16,6 +18,8 @@ import org.jacop.search.SelectChoicePoint;
 import org.jacop.search.SimpleSelect;
 import org.jacop.search.SmallestDomain;
 import org.jacop.constraints.Element;
+import org.jacop.constraints.LexOrder;
+import org.jacop.constraints.PrimitiveConstraint;
 
 //Gjordes i minizinc istället
 
@@ -76,32 +80,38 @@ public class UrbanPlanning {
 			}
 		}
 		
-		 // Variables corresponding to the score of each row and column.
+		//Symmetry breaking constraints för rader
+		for(int i = 1; i<n;i++){
+			store.impose(new LexOrder(rowAndCols[i-1],rowAndCols[i],false));
+		}
+		//Symmetry breaking constraints för kolumner
+		for(int i = n+1; i<2*n;i++){
+			store.impose(new LexOrder(rowAndCols[i-1],rowAndCols[i],false));
+		}
+		// Variables corresponding to the score of each row and column.
         // Indexes 0-4 corresponds to the rows and indexes 5-9 corresponds
         // to the columns.
-        IntVar rowcolsums[] = new IntVar[10];
-        for (int i = 0; i < 10; i++) {
+        IntVar rowcolsums[] = new IntVar[2*n];
+        for (int i = 0; i < 2*n; i++) {
             rowcolsums[i] = new IntVar(store, "sum" + i);
-            rowcolsums[i].addDom(-5,-5);
-            rowcolsums[i].addDom(-4,-4);
-            rowcolsums[i].addDom(-3,-3);
-            rowcolsums[i].addDom(3,3);
-            rowcolsums[i].addDom(4,4);
-            rowcolsums[i].addDom(5,5);
+            for(int j = 3; j<=n;j++){
+            	rowcolsums[i].addDom(-j,-j);
+            	rowcolsums[i].addDom(j,j);
+            }
         }
 
-        int score[] = {-5, -4, -3, 3, 4, 5};
+        //int score[] = {-5, -4, -3, 3, 4, 5};
 
-        for (int i = 0; i < 10; i++) {
-            IntVar sum = new IntVar(store, "sum"+i, 0, 5);
+        for (int i = 0; i < 2*n; i++) {
+            IntVar sum = new IntVar(store, "sum"+i, 0, n);
             Constraint ctr = new Sum(rowAndCols[i], sum);
             store.impose(ctr);
-            store.impose(new Element(sum, score, rowcolsums[i], -1));
+            store.impose(new Element(sum, point_distribution, rowcolsums[i], -1));
         }
 
         // Used to find max score. Minimizing negMaxScore will maximize maxScore
-        IntVar maxScore = new IntVar(store, "maxScore", -50, 50);
-        IntVar negMaxScore = new IntVar(store, "negMaxScore", -50, 50);
+        IntVar maxScore = new IntVar(store, "maxScore", -100, 100);
+        IntVar negMaxScore = new IntVar(store, "negMaxScore", -100, 100);
         IntVar zero = new IntVar(store, "zero", 0, 0);
 
         store.impose(new Sum(rowcolsums, maxScore));
