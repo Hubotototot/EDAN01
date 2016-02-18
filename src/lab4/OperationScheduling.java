@@ -1,8 +1,6 @@
 package lab4;
 
-//https://github.com/Contemptio/EDAN01/blob/master/Laborations/3-AutoRegressionFilter/autoRegressionFilter.mzn
-//https://github.com/RobertBorg/EDAN01/blob/master/src/minizink/AutoRegressionFilter.mzn
-//https://github.com/eliasbrange/edan01/blob/master/arf.mzn elias brange hax
+//Gjordes i minizinc istället
 
 public class OperationScheduling {
 
