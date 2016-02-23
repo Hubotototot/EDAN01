@@ -12,7 +12,9 @@ import org.jacop.constraints.XplusYeqZ;
 import org.jacop.core.IntVar;
 import org.jacop.core.Store;
 import org.jacop.search.DepthFirstSearch;
+import org.jacop.search.IndomainMax;
 import org.jacop.search.IndomainMin;
+import org.jacop.search.LargestDomain;
 import org.jacop.search.Search;
 import org.jacop.search.SelectChoicePoint;
 import org.jacop.search.SimpleSelect;
@@ -101,16 +103,15 @@ public class UrbanPlanning {
         IntVar rowcolsums[] = new IntVar[2*n];
         for (int i = 0; i < 2*n; i++) {
             rowcolsums[i] = new IntVar(store, "sum" + i);
-            for(int j = 3; j<=n;j++){
-            	rowcolsums[i].addDom(-j,-j);
-            	rowcolsums[i].addDom(j,j);
+            for(int j = 0; j<point_distribution.length; j++){
+            	rowcolsums[i].addDom(point_distribution[j],point_distribution[j]);
             }
         }
         
+        //Sätter constraint för vilka värden
         for (int i = 0; i < 2*n; i++) {
             IntVar sum = new IntVar(store, "sum"+i, 0, n);
-            Constraint ctr = new Sum(rowAndCols[i], sum);
-            store.impose(ctr);
+            store.impose(new Sum(rowAndCols[i], sum));
             store.impose(new Element(sum, point_distribution, rowcolsums[i], -1));
         }
 
